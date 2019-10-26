@@ -1,0 +1,15 @@
+{
+  "name": "torrente",
+  "version": "1.0.0",
+  "main": "index.js",
+  "repository": "https://github.com/0xkalvin/torrente.git",
+  "author": "kalvin <kalvinvini1998@gmail.com>",
+  "license": "MIT",
+  "dependencies": {
+    "bencode": "^2.0.1",
+    "dotenv": "^8.2.0"
+  },
+  "scripts": {
+    "start": "node src/index.js"
+  }
+}
