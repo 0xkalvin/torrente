@@ -3,7 +3,14 @@ const path = require('path')
 const fs = require('fs');
 const bencode = require('bencode');
 
-const torrent = bencode.decode(fs.readFileSync(path.resolve(__dirname, process.env.TORRENT_FILE)), 'utf8')
+const tracker = require('./tracker');
 
-console.log(torrent);
-// console.log(torrent.announce.toString('utf8'));
+/*  Loading and parsing torrent file    */
+const torrent = bencode.decode(fs.readFileSync(path.resolve(__dirname, process.env.TORRENT_FILE)))
+
+
+
+tracker.getPeers(torrent, peers => {
+    console.log('Peers: ', peers);
+})
+
