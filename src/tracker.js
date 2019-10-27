@@ -1,5 +1,6 @@
 const urlParser = require('url').parse;
 const dgram = require('dgram');
+const crypto = require('crypto');
 
 module.exports = {
 
@@ -9,15 +10,15 @@ module.exports = {
         const socket = dgram.createSocket('udp4');
 
         /*  Send connect request  */
-        sendMessageViaUDP(socket, buildConnectionRequest() , torrent.announce.toString('utf8'))
+        sendMessageViaUDP(socket, buildConnectionRequest(), torrent.announce.toString('utf8'))
 
         /*  Listening to new messages   */
         socket.on('message', msg => {
 
 
-            if(respType(msg) === "connect"){
+            if (respType(msg) === "connect") {
                 console.log(" ------  Connected ------");
-                
+
                 /*  Parse received message from tracker */
                 const connResp = parseConnectionResponse(msg);
 
@@ -27,7 +28,7 @@ module.exports = {
                 /*  Send announce request    */
                 sendMessageViaUDP(socket, annouceReq, torrent.announce.toString('utf8'));
             }
-            else if(respType(msg) === "announce"){
+            else if (respType(msg) === "announce") {
                 console.log(" ------  List of peers received ------");
 
                 /*  Parsing announce response   */
@@ -36,7 +37,7 @@ module.exports = {
                 /*  Pass peers to callback  */
                 callback(announceResp.peers);
             }
-            
+
         })
 
     }
@@ -44,7 +45,7 @@ module.exports = {
 
 
 function sendMessageViaUDP(socket, message, rawURL) {
-    
+
     /*  Getting tracker url */
     const trackerURL = urlParser(rawURL);
 
@@ -56,24 +57,57 @@ function sendMessageViaUDP(socket, message, rawURL) {
 }
 
 
-function respType(response){
+function respType(response) {
+    const action = response.readUInt32BE(0);
+    if (action === 0) return 'connect';
+    if (action === 1) return 'announce';
+  }
+
+
+
+/** 
+ * A connection request contains 3 properties:
+ *  -   a constant connection id (8 bytes)
+ *  -   a constant value that represents a connection request (4 bytes)
+ *  -   a random transaction id (4 bytes)
+ */  
+function buildConnectionRequest() {
+
+    /* Request must have length of 16 bytes */
+    const conReq = Buffer.alloc(16);
+
+    /* Writes connection id. Should always be 0x41727101980 */
+    conReq.writeUInt32BE(0x417, 0); 
+    conReq.writeUInt32BE(0x27101980, 4);
+
+    /* Value should always be 0 for connection request  */
+    conReq.writeUInt32BE(0, 8);
+
+    /* Generates a random transaction id  */
+    crypto.randomBytes(4).copy(conReq, 12);
+
+    return conReq;
 
 }
 
+/** 
+ * A connection response contains 3 properties:
+ *  -  the constant value that represents a connection request (4 bytes)
+ *  -  the transaction id (4 bytes)
+ *  -   the connection id (8 bytes)
+*/
+function parseConnectionResponse(response) {
+    return {
+        action: response.readUInt32BE(0),
+        transactionId: response.readUInt32BE(4),
+        connectionId: response.slice(8)   
+    }
+}
 
-function parseConnectionResponse(response){
+function buildAnnounceRequest(connectionId) {
 
 }
 
-function parseAnnounceResponse(response){
+function parseAnnounceResponse(response) {
 
-}
-
-
-function buildConnectionRequest(){
-
-}
-
-function buildAnnounceRequest(connectionId){
-    
 }
