@@ -2,6 +2,9 @@ const urlParser = require('url').parse;
 const dgram = require('dgram');
 const crypto = require('crypto');
 
+const parser = require('./parser');
+const utils = require('./utils');
+
 module.exports = {
 
     getPeers(torrent, callback) {
@@ -104,8 +107,41 @@ function parseConnectionResponse(response) {
     }
 }
 
-function buildAnnounceRequest(connectionId) {
+/*   Default port should be between 6881 and 6889
+     according to the specs
+*/
+function buildAnnounceRequest(connectionId, torrent, port=6881) {
 
+    /* Must have length of 98 bytes */
+    const annouceReq = Buffer.allocUnsafe(98);
+    /* Connection id */
+    connectionId.copy(annouceReq, 0);
+    /* Action  */
+    annouceReq.writeUInt32BE(1, 8);
+    /* Generate a transaction id */
+    crypto.randomBytes(4).copy(annouceReq, 12);
+    /* Hash of torrent file */
+    parser.infoHash(torrent).copy(annouceReq, 16);
+    /* My peer client id */
+    utils.generateClientId().copy(annouceReq, 36);
+    /* Downloaded */
+    Buffer.alloc(8).copy(annouceReq, 56);
+    /* Left */
+    parser.size(torrent).copy(annouceReq, 64);
+    /* Uploaded */
+    Buffer.alloc(8).copy(annouceReq, 72);
+    /* Event -> 0: none; 1: completed; 2: started */
+    annouceReq.writeUInt32BE(0, 80);
+    /* IP address -> 0: default */
+    annouceReq.writeUInt32BE(0, 80);
+    /* Key */
+    crypto.randomBytes(4).copy(annouceReq, 88);
+    /* Num want */
+    annouceReq.writeInt32BE(-1, 92);
+    /* Port */
+    annouceReq.writeUInt16BE(port, 96);
+
+    return annouceReq;
 }
 
 function parseAnnounceResponse(response) {
