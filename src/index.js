@@ -1,13 +1,11 @@
 require('dotenv').config()
 const path = require('path')
-const fs = require('fs');
-const bencode = require('bencode');
 
+const parser = require("./torrentParser");
 const tracker = require('./tracker');
 
 /*  Loading and parsing torrent file    */
-const torrent = bencode.decode(fs.readFileSync(path.resolve(__dirname, process.env.TORRENT_FILE)))
-
+const torrent = parser.open(path.resolve(process.env.TORRENT_FILE))
 
 
 tracker.getPeers(torrent, peers => {

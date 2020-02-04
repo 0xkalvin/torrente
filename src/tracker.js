@@ -2,7 +2,7 @@ const urlParser = require('url').parse;
 const dgram = require('dgram');
 const crypto = require('crypto');
 
-const parser = require('./parser');
+const parser = require('./torrentParser');
 const utils = require('./utils');
 
 module.exports = {
@@ -12,7 +12,7 @@ module.exports = {
         /*  Creates a Socket */
         const socket = dgram.createSocket('udp4');
 
-        /*  Send connect request  */
+        /*  Send connection request  */
         sendMessageViaUDP(socket, buildConnectionRequest(), torrent.announce.toString('utf8'))
 
         /*  Listening to new messages   */
@@ -36,6 +36,9 @@ module.exports = {
 
                 /*  Parsing announce response   */
                 const announceResp = parseAnnounceResponse(msg);
+
+
+                console.log(announceResp);
 
                 /*  Pass peers to callback  */
                 callback(announceResp.peers);
@@ -89,6 +92,8 @@ function buildConnectionRequest() {
     /* Generates a random transaction id  */
     crypto.randomBytes(4).copy(conReq, 12);
 
+    console.info("Connection Request was built");
+
     return conReq;
 
 }
@@ -141,9 +146,31 @@ function buildAnnounceRequest(connectionId, torrent, port=6881) {
     /* Port */
     annouceReq.writeUInt16BE(port, 96);
 
+    console.info("Announce Request was built");
+
     return annouceReq;
 }
 
 function parseAnnounceResponse(response) {
 
+    function group(iterable, groupSize) {
+        let groups = [];
+        for (let i = 0; i < iterable.length; i += groupSize) {
+          groups.push(iterable.slice(i, i + groupSize));
+        }
+        return groups;
+      }
+    
+    return {
+        action: response.readUInt32BE(0),
+        transactionId: response.readUInt32BE(4),
+        leechers: response.readUInt32BE(8),
+        seeders: response.readUInt32BE(12),
+        peers: group(response.slice(20), 6).map(address => {
+            return {
+            ip: address.slice(0, 4).join('.'),
+            port: address.readUInt16BE(4)
+            }
+        })
+    }
 }
